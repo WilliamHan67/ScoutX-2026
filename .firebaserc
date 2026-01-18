@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "scoutx-26e01"
+  },
+  "targets": {
+    "scoutx-2025": {
+      "hosting": {
+        "targetName": "scoutx-2025"
+      }
+    }
+  },
+  "etags": {}
+}
