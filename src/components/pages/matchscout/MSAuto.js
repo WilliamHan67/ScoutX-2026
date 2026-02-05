@@ -4,6 +4,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import { MatchStage, IntakeElement, IntakeLocations } from "../../MatchConstants";
 import LeaveButton from "./form_elements/LeaveButton";
 import MapSim from "./form_elements/map/MapSim";
+import Timer from "./form_elements/map/Timer";
+import { TempleHinduRounded } from "@mui/icons-material";
 
 export default function MSAuto({ data, handleStageChange }) {
     const [counter, setCounter] = useState(0);
@@ -14,6 +16,9 @@ export default function MSAuto({ data, handleStageChange }) {
     const [isFocused, setIsFocused] = useState(false);
     const [alert, setAlert] = useState({ open: false, severity: "info", message: "Remember to switch to Tele Page" });
     const [timer, setTimer] = useState(false); 
+    const[time, setTime] = useState(0); 
+
+    const stopWatch = Timer(); 
 
     useEffect(() => {
         const alertTimer = setTimeout(() => {
@@ -30,6 +35,10 @@ export default function MSAuto({ data, handleStageChange }) {
     const update = () => {
         setCounter(counter + 1);
     };
+
+    const recordTime = () => {
+        setTime(stopWatch.elapsedTime);
+    }
 
     const handleDelete = () => {
         if (deleteData !== null) {
@@ -61,6 +70,7 @@ export default function MSAuto({ data, handleStageChange }) {
     };
 
     return (
+
         <Stack direction={"column"} spacing={2}>
             <Slider
                 value={data.getFuel(MatchStage.AUTO)}
@@ -92,6 +102,22 @@ export default function MSAuto({ data, handleStageChange }) {
             </Stack>
             <Typography>
                 Fuel Scored: {data.getFuel(MatchStage.AUTO)}
+            </Typography>
+            <Button variant="outlined" onClick={() => stopWatch.startStopwatch()} fullWidth>
+                Start Timer
+            </Button>
+            <Button 
+                variant="outlined" 
+                onClick={() => {
+                    stopWatch.stopStopwatch();
+                    recordTime(); 
+                }} 
+                fullWidth
+            >
+                Stop Timer
+            </Button>
+            <Typography>
+                {stopWatch.formattedTime}
             </Typography>
           <Stack  direction="row" spacing={2}>
             <Button
