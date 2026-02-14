@@ -139,7 +139,10 @@ export default function MSAuto({ data, handleStageChange }) {
 
     const handleDelete = () => {
         if (deleteData !== null) {
-            data.delete(MatchStage.AUTO, deleteData);
+            if (data.getFuel(MatchStage.AUTO).length - 1 == deleteData) {
+                setTrackingBursts(!trackingBursts); 
+            }
+            data.deleteFuel(MatchStage.AUTO, deleteData);
             setDeleteData(null);
             update();
         }
@@ -165,6 +168,36 @@ export default function MSAuto({ data, handleStageChange }) {
     return (
 
         <Stack direction={"column"} spacing={2}>
+            {data.getFuel(MatchStage.AUTO).length > 0 && ( 
+            <FormControl fullWidth>
+            <InputLabel shrink={isFocused || deleteData !== null}>Previous Outtakes</InputLabel>
+            <Select
+                value={deleteData}
+                onChange={(e) => setDeleteData(e.target.value)}  // Update state on change
+                displayEmpty
+                renderValue={getDisplayValue}
+                label= { isFocused || deleteData !== null ? "Previous Outtakes" : ""}
+                onFocus={() => setIsFocused(true)}  // Track focus
+                onBlur={() => setIsFocused(false)}   // Track blur
+            >
+                {data.getFuel(MatchStage.AUTO).map((data, idx) => (
+                    <MenuItem key={idx} value={idx}>
+                        {idx + 1 + ". " + data + " FUEL SCORED"} 
+                    </MenuItem>
+                ))}
+            </Select>
+            </FormControl>
+            )}
+            {deleteData != null && (
+                <Button 
+                    variant="outlined" 
+                    color="error" 
+                    sx={{ mt: 2 }} 
+                    onClick={handleDelete} 
+                    fullWidth>
+                    Delete Outtake
+              </Button>
+            )}
             <Button variant="outlined" onClick={(() => handleBursts())}>
                 {trackingBursts ? 'End Burst' : 'Start Burst'}
             </Button>

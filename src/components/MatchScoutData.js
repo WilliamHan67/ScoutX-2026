@@ -118,6 +118,10 @@ export default class MatchScoutData {
     delete(stage, index) {
         this.data[stage]['outtakeCounts'].splice(index, 1);
     }
+
+    deleteFuel(stage, index) {
+        this.data[stage]['fuelScored'].splice(index, 1); 
+    }
     
     getOuttakeCount(stage) {
         return this.data[stage]['outtakeCounts'].length; 
