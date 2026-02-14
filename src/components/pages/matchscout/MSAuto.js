@@ -16,9 +16,19 @@ export default function MSAuto({ data, handleStageChange }) {
     const [isFocused, setIsFocused] = useState(false);
     const [alert, setAlert] = useState({ open: false, severity: "info", message: "Remember to switch to Tele Page" });
     const [timer, setTimer] = useState(false); 
-    const[time, setTime] = useState(0); 
+    
+    const [shootingTimes, setShootingTimes] = useState([]);
+    const [timerMode, setTimerMode] = useState("toggle"); // "toggle" or "hold"
+    const [holdTime, setHoldTime] = useState(0);
+    const [lastHoldTime, setLastHoldTime] = useState(null);
 
-    const stopWatch = Timer(); 
+    // Timer state for toggle mode
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [isRunning, setIsRunning] = useState(false);
+    const timerRef = useRef(null);
+    const startTimeRef = useRef(0);
+    const [hasStarted, setHasStarted] = useState(false);
+    const accumulatedTimeRef = useRef(0); // Track accumulated time when paused
 
     useEffect(() => {
         const alertTimer = setTimeout(() => {
@@ -36,9 +46,86 @@ export default function MSAuto({ data, handleStageChange }) {
         setCounter(counter + 1);
     };
 
-    const recordTime = () => {
-        setTime(stopWatch.elapsedTime);
-    }
+    // Toggle mode timer functions
+    const startStopwatch = () => {
+        setHasStarted(true);
+        if (!hasStarted) {
+            setElapsedTime(0);
+        }
+        clearInterval(timerRef.current);
+        setIsRunning(true);
+        const start = Date.now();
+        startTimeRef.current = start;
+        timerRef.current = setInterval(() => {
+            setElapsedTime(Date.now() - startTimeRef.current);
+        }, 10);
+    };
+
+    const stopStopwatch = () => {
+        setHasStarted(false);
+        setIsRunning(false);
+        clearInterval(timerRef.current);
+        const finalTime = elapsedTime;
+        setShootingTimes([...shootingTimes, finalTime / 1000]);
+        setElapsedTime(0);
+    };
+
+    const pauseStopwatch = () => {
+        if (isRunning) {
+            // Pausing - save the accumulated time
+            accumulatedTimeRef.current = elapsedTime;
+            clearInterval(timerRef.current);
+        } else {
+            // Resuming - continue from accumulated time
+            const start = Date.now();
+            startTimeRef.current = start;
+            timerRef.current = setInterval(() => {
+                setElapsedTime(accumulatedTimeRef.current + (Date.now() - startTimeRef.current));
+            }, 10);
+        }
+        setIsRunning(!isRunning);
+    };
+
+    // Format time for toggle mode
+    const formatTime = (time) => {
+        const milliseconds = Math.floor((time % 1000) / 10);
+        const seconds = Math.floor((time / 1000) % 60);
+        return `${String(seconds).padStart(2, "0")}:${String(milliseconds).padStart(2, "0")}`;
+    };
+
+    // Handle button click based on timer state
+    const handleTimerButtonClick = () => {
+        if (!hasStarted) {
+            // Timer hasn't started - start it
+            startStopwatch();
+        } else if (hasStarted && !isRunning) {
+            // Timer is paused - resume it
+            pauseStopwatch();
+        } else {
+            // Timer is running - pause it (don't submit yet)
+            pauseStopwatch();
+        }
+    };
+
+    // Submit the time explicitly
+    const submitTime = () => {
+        if (hasStarted) {
+            clearInterval(timerRef.current);
+            const finalTime = elapsedTime;
+            setShootingTimes([...shootingTimes, finalTime / 1000]);
+            setHasStarted(false);
+            setIsRunning(false);
+            setElapsedTime(0);
+        }
+    };
+
+    // Handle time from hold timer
+    const handleHoldTimeSubmit = (time) => {
+        if (time > 0) {
+            setLastHoldTime(time);
+            setShootingTimes([...shootingTimes, time / 1000]);
+        }
+    };
 
     const handleDelete = () => {
         if (deleteData !== null) {
@@ -103,22 +190,75 @@ export default function MSAuto({ data, handleStageChange }) {
             <Typography>
                 Fuel Scored: {data.getFuel(MatchStage.AUTO)}
             </Typography>
-            <Button variant="outlined" onClick={() => stopWatch.startStopwatch()} fullWidth>
-                Start Timer
-            </Button>
-            <Button 
-                variant="outlined" 
-                onClick={() => {
-                    stopWatch.stopStopwatch();
-                    recordTime(); 
-                }} 
-                fullWidth
-            >
-                Stop Timer
-            </Button>
-            <Typography>
-                {stopWatch.formattedTime}
-            </Typography>
+            
+            {/* Timer Mode Toggle */}
+            <Stack direction="row" spacing={1} justifyContent="center">
+                <Button 
+                    variant={timerMode === "toggle" ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => setTimerMode("toggle")}
+                >
+                    Toggle Mode
+                </Button>
+                <Button 
+                    variant={timerMode === "hold" ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => setTimerMode("hold")}
+                >
+                    Hold Mode
+                </Button>
+            </Stack>
+
+            {/* Toggle Mode Timer UI */}
+            {timerMode === "toggle" && (
+                <>
+                    <Typography variant="h5" fontFamily="monospace" fontWeight="bold">
+                        {formatTime(elapsedTime)}
+                    </Typography>
+                    <Stack direction={"row"} spacing={2}>
+                        <Button 
+                            variant="outlined" 
+                            color={hasStarted ? (isRunning ? "warning" : "primary") : "success"}
+                            onClick={handleTimerButtonClick} 
+                            fullWidth
+                        >
+                            {hasStarted ? (isRunning ? 'Pause' : 'Resume') : "Start"}
+                        </Button>
+                        {hasStarted && (
+                            <Button 
+                                variant="outlined" 
+                                color="error"
+                                onClick={submitTime}                 
+                                fullWidth
+                            >
+                                Submit
+                            </Button>
+                        )}
+                    </Stack>
+                </>
+            )}
+
+            {/* Hold Mode Timer UI */}
+            {timerMode === "hold" && (
+                <Timer 
+                    showToggle={false}
+                    defaultMode="hold"
+                    onTimeSubmit={handleHoldTimeSubmit}
+                />
+            )}
+
+            {/* Shooting Times Display */}
+            <Typography variant="h6">Shooting Times:</Typography>
+            {shootingTimes.length === 0 ? (
+                <Typography color="textSecondary">No times recorded yet</Typography>
+            ) : (
+                shootingTimes.map((time, index) => (
+                    <Typography key={index}>
+                        #{index + 1}: {time.toFixed(2)}s
+                    </Typography>
+                ))
+            )}
+            
           <Stack  direction="row" spacing={2}>
             <Button
                    variant="outlined"
